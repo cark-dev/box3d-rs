@@ -15,7 +15,7 @@ use box3d::Vec3 as BoxVec3;
 use box3d::{
     BodyCreateOptions, BodyDef, BodyId, BodyType, Capacity, ContactId, ContactTuning, Filter,
     Mesh as BoxMesh, MeshCreateOptions, MotionLocks as BoxMotionLocks, Quat, ShapeDef, ShapeId,
-    SurfaceMaterial, TaskCallback, TaskSystem, Transform as BoxTransform, World,
+    ShapeQueryHandle, SurfaceMaterial, TaskCallback, TaskSystem, Transform as BoxTransform, World,
 };
 use std::{
     collections::{HashMap, HashSet},
