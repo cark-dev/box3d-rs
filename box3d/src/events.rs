@@ -269,6 +269,16 @@ impl BodyId {
         })
         .map(ShapeId::from_raw)
     }
+
+    pub fn motion_locks(self) -> crate::MotionLocks {
+        assert!(self.is_valid(), "invalid Box3D body handle");
+        unsafe { sys::b3Body_GetMotionLocks(self.raw) }.into()
+    }
+
+    pub fn set_motion_locks(self, locks: crate::MotionLocks) {
+        assert!(self.is_valid(), "invalid Box3D body handle");
+        unsafe { sys::b3Body_SetMotionLocks(self.raw, locks.into()) };
+    }
 }
 
 impl PartialEq for BodyId {

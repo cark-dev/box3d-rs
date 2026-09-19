@@ -374,11 +374,11 @@ impl<'world> Body<'world> {
     }
 
     pub fn motion_locks(&self) -> MotionLocks {
-        unsafe { sys::b3Body_GetMotionLocks(self.raw) }.into()
+        self.id().motion_locks()
     }
 
     pub fn set_motion_locks(&self, locks: MotionLocks) {
-        unsafe { sys::b3Body_SetMotionLocks(self.raw, locks.into()) };
+        self.id().set_motion_locks(locks);
     }
 
     pub fn set_bullet(&self, bullet: bool) {

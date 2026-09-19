@@ -14,8 +14,8 @@ use bevy_time::{Fixed, Time};
 use box3d::Vec3 as BoxVec3;
 use box3d::{
     BodyCreateOptions, BodyDef, BodyId, BodyType, Capacity, ContactId, ContactTuning, Filter,
-    Mesh as BoxMesh, MeshCreateOptions, Quat, ShapeDef, ShapeId, ShapeQueryHandle, SurfaceMaterial,
-    TaskCallback, TaskSystem, Transform as BoxTransform, World,
+    Mesh as BoxMesh, MeshCreateOptions, MotionLocks as BoxMotionLocks, Quat, ShapeDef, ShapeId,
+    SurfaceMaterial, TaskCallback, TaskSystem, Transform as BoxTransform, World,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -204,6 +204,7 @@ impl bevy_app::Plugin for Box3dPlugin {
                         create_box3d_shapes,
                         sync_velocity_to_box3d,
                         sync_damping_to_box3d,
+                        sync_motion_locks_to_box3d,
                         sync_sleep_threshold_to_box3d,
                         sync_static_transforms_to_box3d,
                     )
@@ -386,6 +387,44 @@ impl Collider {
         self.def.friction = material.friction;
         self.def.surface_material = Some(material);
         self
+    }
+}
+
+/// Linear and angular motion locks synced into Box3D
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Component)]
+pub struct MotionLocks {
+    pub linear_x: bool,
+    pub linear_y: bool,
+    pub linear_z: bool,
+    pub angular_x: bool,
+    pub angular_y: bool,
+    pub angular_z: bool,
+}
+
+impl MotionLocks {
+    /// Restricts a body to the XY plane while allowing rotation around Z
+    pub const fn planar_xy() -> Self {
+        Self {
+            linear_x: false,
+            linear_y: false,
+            linear_z: true,
+            angular_x: true,
+            angular_y: true,
+            angular_z: false,
+        }
+    }
+}
+
+impl From<MotionLocks> for BoxMotionLocks {
+    fn from(value: MotionLocks) -> Self {
+        Self {
+            linear_x: value.linear_x,
+            linear_y: value.linear_y,
+            linear_z: value.linear_z,
+            angular_x: value.angular_x,
+            angular_y: value.angular_y,
+            angular_z: value.angular_z,
+        }
     }
 }
 
@@ -625,6 +664,7 @@ fn create_box3d_bodies(
             Option<&bevy_transform::prelude::Transform>,
             Option<&Velocity>,
             Option<&Damping>,
+            Option<&MotionLocks>,
             Option<&FastRotation>,
             Option<&SleepThreshold>,
             Option<&Collider>,
@@ -639,6 +679,7 @@ fn create_box3d_bodies(
         transform,
         velocity,
         damping,
+        motion_locks,
         fast_rotation,
         sleep_threshold,
         collider,
@@ -669,6 +710,9 @@ fn create_box3d_bodies(
                 allow_fast_rotation: fast_rotation.is_some(),
             },
         );
+        if let Some(locks) = motion_locks {
+            body_id.set_motion_locks((*locks).into());
+        }
         physics.bodies.insert(entity, body_id);
         physics.body_entities.insert(body_id.to_bits(), entity);
         let mut entity_commands = commands.entity(entity);
@@ -833,6 +877,25 @@ fn sync_damping_to_box3d(
 
         body.id.set_linear_damping(damping.linear);
         body.id.set_angular_damping(damping.angular);
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn sync_motion_locks_to_box3d(
+    query: bevy_ecs::prelude::Query<
+        (
+            bevy_ecs::prelude::Ref<MotionLocks>,
+            bevy_ecs::prelude::Ref<Box3dBody>,
+        ),
+        (bevy_ecs::prelude::Changed<MotionLocks>,),
+    >,
+) {
+    for (locks, body) in &query {
+        if body.is_added() {
+            continue;
+        }
+
+        body.id.set_motion_locks((*locks).into());
     }
 }
 
